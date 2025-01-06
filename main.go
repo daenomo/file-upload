@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const MAX_UPLOAD_SIZE = 1024 * 1024 // 1MB
+const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024 // 1MB
 
 // Progress is used to track the progress of a file upload.
 // It implements the io.Writer interface so it can be passed
@@ -47,7 +47,8 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Add("Content-Type", "text/html")
+		http.ServeFile(w, r, "index.html")
 		return
 	}
 
@@ -118,7 +119,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Fprintf(w, "Upload successful")
+	//	fmt.Fprintf(w, "Upload successful")
+	w.Header().Add("Content-Type", "text/html")
+	http.ServeFile(w, r, "index.html")
 }
 
 func main() {
