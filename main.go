@@ -14,13 +14,13 @@ import (
 
 const MAX_UPLOAD_SIZE = 512 * 1024 * 1024 // 512MB
 
-// Progress structure to track the progress of a file upload
+// Progress structure to track the progress of a file upload.
 type Progress struct {
 	TotalSize int64
 	BytesRead int64
 }
 
-// Write is used to satisfy the io.Writer interface
+// Write is used to satisfy the io.Writer interface.
 func (pr *Progress) Write(p []byte) (n int, err error) {
 	n = len(p)
 	pr.BytesRead += int64(n)
@@ -79,8 +79,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		filetype := http.DetectContentType(buff)
-		if filetype != "video/mp4" {
-			http.Error(w, "The provided file format is not allowed. Please upload an MP4 video", http.StatusBadRequest)
+		if filetype != "video/mp4" && filetype != "image/jpeg" && filetype != "image/png" {
+			http.Error(w, "The provided file format is not allowed. Please upload an MP4, JPEG, or PNG file", http.StatusBadRequest)
 			return
 		}
 
@@ -115,20 +115,20 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Video structure to hold video information
+// Video structure to hold video information.
 type Video struct {
 	Name string
 	Path string
 }
 
-// Function to get list of MP4 files
+// Function to get list of MP4, JPEG, and PNG files.
 func getVideos() ([]Video, error) {
 	var videos []Video
 	err := filepath.Walk("./uploads", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".mp4") {
+		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".mp4") || strings.HasSuffix(info.Name(), ".jpg") || strings.HasSuffix(info.Name(), ".png")) {
 			videos = append(videos, Video{Name: info.Name(), Path: path})
 		}
 		return nil

@@ -1,80 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>File upload demo</title>
-  </head>
-  <body>
-    <form id="form" enctype="multipart/form-data" action="/upload" method="POST">
-      <input class="input file-input" type="file" name="file" multiple />
-      <button class="button" type="submit">Submit</button>
-    </form>
-    <h1>Video Player</h1>
-    <p id="currentVideo">現在の動画: <span id="currentVideoName">なし</span>
-    <button id="startPlayback">最初の動画を再生</button></p>
-    <video id="videoPlayer" width="600" controls>
-      <source id="videoSource" src="" type="video/mp4">
-    </video>
-    <ul id="videoList">
-      {{if .}}
-          {{range .}}
-          <li>
-              <a href="#" onclick="playVideo('{{.Name}}'); return false;">{{.Name}}</a>
-          </li>
-          {{end}}
-      {{else}}
-          <p>No videos found.</p>
-      {{end}}
-    </ul>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ファイルアップロードのデモ</title>
+</head>
+<body>
 
-    <script>
-        const videoPlayer = document.getElementById('videoPlayer');
-        const videoSource = document.getElementById('videoSource');
-        const videoList = document.getElementById('videoList').getElementsByTagName('a');
-        const currentVideo = document.getElementById('currentVideo');
-        const currentVideoName = document.getElementById('currentVideoName');
-        const startPlaybackButton = document.getElementById('startPlayback');
-        let currentVideoIndex = 0;
+<h2>メディアプレーヤー</h2>
+<video id="videoPlayer" width="600" controls>
+    <source id="videoSource" src="" type="video/mp4">
+    お使いのブラウザはこのビデオタグをサポートしていません。
+</video>
+<img id="imageDisplay" src="" style="display:none;" width="600"/>
 
-        function playVideo(fileName) {
-            const src = `/videos/${fileName}`;
+<h2>ファイルアップロードフォーム</h2>
+<form enctype="multipart/form-data" action="/upload" method="POST">
+    <input type="file" name="file" multiple>
+    <input type="submit" value="アップロード">
+</form>
+
+<ul id="fileList">
+    {{range .}}
+    <li>
+        <a href="#" onclick="playFile('{{.Name}}'); return false;">{{.Name}}</a>
+    </li>
+    {{else}}
+    <p>No files found.</p>
+    {{end}}
+</ul>
+
+<script>
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoSource = document.getElementById('videoSource');
+    const imageDisplay = document.getElementById('imageDisplay');
+    const fileList = document.getElementById('fileList').getElementsByTagName('a');
+    let currentFileName = "";
+    let fileChangeTimeout;
+
+    function playFile(fileName) {
+        clearTimeout(fileChangeTimeout);
+        currentFileName = fileName;
+        const extension = fileName.split('.').pop().toLowerCase();
+        const src = `/videos/${fileName}`;
+
+        if (extension === 'mp4') {
+            videoPlayer.style.display = 'block';
+            imageDisplay.style.display = 'none';
             videoSource.src = src;
             videoPlayer.load();
             videoPlayer.play();
-            updateCurrentVideoIndex(src);
+            videoPlayer.addEventListener('ended', playNextFile);
+        } else if (extension === 'jpg' || extension === 'jpeg' || extension === 'png') {
+            videoPlayer.style.display = 'none';
+            imageDisplay.style.display = 'block';
+            imageDisplay.src = src;
+            fileChangeTimeout = setTimeout(playNextFile, 10000);  // 10秒後に次のファイルを再生
         }
+    }
 
-        function updateCurrentVideoIndex(src) {
-            for (let i = 0; i < videoList.length; i++) {
-                const videoSrc = `/videos/${videoList[i].textContent}`;
-                if (videoSrc === src) {
-                    currentVideoIndex = i;
-                    currentVideoName.textContent = videoList[i].textContent;
-                    break;
-                }
-            }
+    function playNextFile() {
+        let currentIndex = Array.from(fileList).findIndex(a => a.textContent === currentFileName);
+        currentIndex++;
+        if (currentIndex < fileList.length) {
+            playFile(fileList[currentIndex].textContent);
+        } else {
+            currentIndex = 0;
+            playFile(fileList[currentIndex].textContent);
         }
+    }
 
-        function playNextVideo() {
-            currentVideoIndex++;
-            if (currentVideoIndex < videoList.length) {
-                playVideo(videoList[currentVideoIndex].textContent);
-            } else {
-                currentVideoIndex = 0; // ループ再生する場合
-                playVideo(videoList[currentVideoIndex].textContent);
-            }
+    document.getElementById('startPlayback').addEventListener('click', function() {
+        if (fileList.length > 0) {
+            playFile(fileList[0].textContent);
+            this.style.display = 'none';
         }
+    });
 
-        videoPlayer.addEventListener('ended', playNextVideo);
+    const startPlaybackButton = document.createElement('button');
+    startPlaybackButton.id = 'startPlayback';
+    startPlaybackButton.textContent = '最初のファイルを再生';
+    document.body.appendChild(startPlaybackButton);
+</script>
 
-        startPlaybackButton.addEventListener('click', function() {
-            if (videoList.length > 0) {
-                playVideo(videoList[0].textContent);
-                startPlaybackButton.style.display = 'none'; // ボタンを隠す
-            }
-        });
-    </script>
-  </body>
+</body>
 </html>
