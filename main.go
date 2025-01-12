@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -14,22 +15,31 @@ import (
 
 const MAX_UPLOAD_SIZE = 512 * 1024 * 1024 // 512MB
 
-// Progress structure to track the progress of a file upload.
+// Progress structure to track the progress of a file upload
 type Progress struct {
 	TotalSize int64
 	BytesRead int64
 }
 
-// Write is used to satisfy the io.Writer interface.
+// Write is used to satisfy the io.Writer interface
 func (pr *Progress) Write(p []byte) (n int, err error) {
 	n = len(p)
 	pr.BytesRead += int64(n)
-	pr.Print()
+	fmt.Printf("File upload in progress: %d\n", pr.BytesRead) // メッセージ表示
 	return
 }
 
+// Printメソッドを追加
 func (pr *Progress) Print() {
-	fmt.Printf("File upload in progress: %d\n", pr.BytesRead)
+	fmt.Printf("File upload in progress: %d Bytes\n", pr.BytesRead)
+}
+
+// Global variable to hold the uploads directory path
+var uploadDir string
+
+func init() {
+	flag.StringVar(&uploadDir, "uploadDir", "./uploads", "Directory for file uploads")
+	flag.Parse()
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,13 +100,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = os.MkdirAll("./uploads", os.ModePerm)
+		err = os.MkdirAll(uploadDir, os.ModePerm) // アップロード・ディレクトリに変更
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		f, err := os.Create(fmt.Sprintf("./uploads/%d%s", time.Now().UnixNano(), filepath.Ext(fileHeader.Filename)))
+		f, err := os.Create(fmt.Sprintf("%s/%d%s", uploadDir, time.Now().UnixNano(), filepath.Ext(fileHeader.Filename)))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -105,7 +115,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 
 		pr := &Progress{TotalSize: fileHeader.Size}
-		_, err = io.Copy(f, io.TeeReader(file, pr))
+		_, err = io.Copy(f, io.TeeReader(file, pr)) // Printメソッド対応
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -115,16 +125,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Video structure to hold video information.
+// Video structure to hold video information
 type Video struct {
 	Name string
 	Path string
 }
 
-// Function to get list of MP4, JPEG, and PNG files.
+// Function to get list of MP4, JPEG, and PNG files
 func getVideos() ([]Video, error) {
 	var videos []Video
-	err := filepath.Walk("./uploads", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(uploadDir, func(path string, info os.FileInfo, err error) error { // ここの検索もアップデート
 		if err != nil {
 			return err
 		}
@@ -141,7 +151,7 @@ func main() {
 	mux.HandleFunc("/", IndexHandler)
 	mux.HandleFunc("/upload", uploadHandler)
 
-	fs := http.FileServer(http.Dir("./uploads"))
+	fs := http.FileServer(http.Dir(uploadDir)) // ここでも変更
 	mux.Handle("/videos/", http.StripPrefix("/videos/", fs))
 
 	if err := http.ListenAndServe(":4500", mux); err != nil {
