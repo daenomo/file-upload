@@ -34,9 +34,38 @@
     const videoPlayer = document.getElementById('videoPlayer');
     const videoSource = document.getElementById('videoSource');
     const imageDisplay = document.getElementById('imageDisplay');
-    const fileList = document.getElementById('fileList').getElementsByTagName('a');
+    const fileList = document.getElementById('fileList');
     let currentFileName = "";
     let fileChangeTimeout;
+
+    function fetchFileList() {
+        fetch('/file-list')
+            .then(response => response.json())
+            .then(data => {
+                updateFileList(data);
+            })
+            .catch(error => console.error('Error fetching file list:', error));
+    }
+
+    function updateFileList(files) {
+        fileList.innerHTML = ''; 
+        if (files.length === 0) {
+            fileList.innerHTML = '<p>No files found.</p>';
+        } else {
+            files.forEach(file => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '#';
+                a.textContent = file.Name;
+                a.onclick = () => {
+                    playFile(file.Name);
+                    return false;
+                };
+                li.appendChild(a);
+                fileList.appendChild(li);
+            });
+        }
+    }
 
     function playFile(fileName) {
         clearTimeout(fileChangeTimeout);
@@ -63,24 +92,32 @@
         let currentIndex = Array.from(fileList).findIndex(a => a.textContent === currentFileName);
         currentIndex++;
         if (currentIndex < fileList.length) {
-            playFile(fileList[currentIndex].textContent);
+            playFile(fileList.getElementsByTagName('a')[currentIndex].textContent);
         } else {
             currentIndex = 0;
-            playFile(fileList[currentIndex].textContent);
+            playFile(fileList.getElementsByTagName('a')[currentIndex].textContent);
         }
     }
-
-    document.getElementById('startPlayback').addEventListener('click', function() {
-        if (fileList.length > 0) {
-            playFile(fileList[0].textContent);
-            this.style.display = 'none';
-        }
-    });
 
     const startPlaybackButton = document.createElement('button');
     startPlaybackButton.id = 'startPlayback';
     startPlaybackButton.textContent = '最初のファイルを再生';
     document.body.appendChild(startPlaybackButton);
+
+
+    document.getElementById('startPlayback').addEventListener('click', function() {
+        if (fileList.getElementsByTagName('a').length > 0) {
+            playFile(fileList.getElementsByTagName('a')[0].textContent);
+            this.style.display = 'none';
+        }
+    });
+
+    // 始めてページ読み込み時にファイル一覧を取得
+    fetchFileList();
+
+    // 1分毎にファイル一覧を更新
+    setInterval(fetchFileList, 60000);
+
 </script>
 
 </body>

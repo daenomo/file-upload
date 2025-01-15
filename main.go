@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const MAX_UPLOAD_SIZE = 512 * 1024 * 1024 // 512MB
@@ -106,7 +106,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		f, err := os.Create(fmt.Sprintf("%s/%d%s", uploadDir, time.Now().UnixNano(), filepath.Ext(fileHeader.Filename)))
+		f, err := os.Create(fmt.Sprintf("%s/%s", uploadDir, fileHeader.Filename))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -146,10 +146,22 @@ func getVideos() ([]Video, error) {
 	return videos, err
 }
 
+func fileListHandler(w http.ResponseWriter, r *http.Request) {
+	videos, err := getVideos()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(videos); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", IndexHandler)
 	mux.HandleFunc("/upload", uploadHandler)
+	mux.HandleFunc("/file-list", fileListHandler)
 
 	fs := http.FileServer(http.Dir(uploadDir)) // ここでも変更
 	mux.Handle("/videos/", http.StripPrefix("/videos/", fs))
